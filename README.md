@@ -124,4 +124,4 @@ template. Verify all bibliography entries before submitting, in particular the
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Fill in the year and author before publishing.
+MIT — see [LICENSE](LICENSE).
