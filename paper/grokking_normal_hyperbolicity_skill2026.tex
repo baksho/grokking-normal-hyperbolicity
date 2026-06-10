@@ -1,0 +1,305 @@
+% =====================================================================
+%  SKILL 2026 SHORT PAPER  (4-6 pages incl. references)
+%
+%  PORTING NOTE (do this before submission):
+%   - Replace the preamble below with the official GI-LNI template:
+%         \documentclass[english]{lni}
+%     and use the LNI front-matter macros (\title, \author{...}{...}{...},
+%     \maketitle, \keywords{...}) from the template instead of the
+%     article-class title block used here for preview.
+%   - This file compiles as-is with pdflatex (article class) so you can
+%     read it; the body (sections, math, figure, thebibliography) ports
+%     verbatim into the LNI class.
+%   - VERIFY EVERY BIBLIOGRAPHY ENTRY. arXiv IDs marked %VERIFY were taken
+%     from search results in late development and must be checked against
+%     the canonical record, especially the 2026 preprints.
+%   - Fill in author name, affiliation, e-mail, and acknowledgements.
+%   - The figure file grokking_normal_hyperbolicity.png must sit next to
+%     this .tex file.
+% =====================================================================
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{microtype}
+
+\title{Is Grokking a Loss of Normal Hyperbolicity\\ of the Interpolation Manifold?}
+\author{Suvinava [Last Name]\thanks{[Affiliation], [e-mail]. Correspondence welcome.}}
+\date{}
+
+\newcommand{\sminp}{\sigma_{\min}^{+}}
+\newcommand{\R}{\mathbb{R}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A recent line of work recasts the post-memorization phase of grokking as
+constrained optimization: once a network interpolates the training set,
+weight decay drives a slow drift along the zero-loss manifold toward lower
+norm. This is, in the language of dynamical systems, a fast--slow system in
+which the interpolation manifold plays the role of a slow manifold. We ask a
+question that this framing makes natural but that the existing literature
+does not address: \emph{is the sharp generalization transition a loss of
+normal hyperbolicity of that manifold} -- a fold- or bifurcation-like event
+in which a normal restoring direction goes flat -- or does the manifold stay
+uniformly attracting while generalization happens by smooth drift? We propose
+a simple, optimizer-agnostic diagnostic: the smallest nonzero singular value
+$\sminp(J)$ of the residual Jacobian, which equals the smallest normal
+restoring curvature of the manifold. On a two-layer ReLU network trained to
+grok modular addition under squared loss, $\sminp(J)$ does not collapse at the
+transition; it is near zero only \emph{before} memorization and attains its
+largest values \emph{during} the transition. This is preliminary evidence
+against the bifurcation hypothesis and in favor of the smooth-contraction
+picture. We are explicit that a single-seed, single-setting, gradual-transition
+experiment under Adam does not prove the absence of a bifurcation; it
+constrains where one could hide.
+\end{abstract}
+
+\section{Introduction}
+Grokking is the empirical observation that a network can reach perfect
+training accuracy with near-chance test accuracy and only generalize after a
+long additional period of training~\cite{power2022}. A productive recent
+account treats the long post-memorization phase as constrained optimization.
+\citet{musat2025} argue that, after interpolation, gradient descent with small
+weight decay effectively minimizes the parameter norm subject to staying on
+the zero-loss manifold, proving this in the limit of infinitesimal learning
+rate and weight decay, and a concurrent framework reaches the same endpoint
+through a Riemannian norm flow on the manifold of interpolating
+solutions~\cite{boursier2025}. \citet{lyu2024} prove, for homogeneous networks
+with large initialization and small weight decay, a sharp transition from a
+kernel predictor to a KKT point of a global min-norm/max-margin problem on
+both classification and regression tasks, and identify modular addition under
+cross-entropy as the motivating phenomenon.
+
+All of these accounts share a structural picture: a fast process pulls the
+parameters onto a low-dimensional set of (near-)interpolating solutions, and a
+slow process driven by weight decay moves the parameters \emph{along} that
+set. This is exactly the structure of a singularly perturbed, or fast--slow,
+dynamical system, with the interpolation manifold as the slow manifold. Yet
+none of these works invokes the corresponding mathematics -- normal
+hyperbolicity, Fenichel persistence of slow manifolds~\cite{fenichel1979,
+kuehn2015}, and what happens when normal hyperbolicity is \emph{lost}. The
+question we raise is whether grokking's defining feature, the suddenness of
+the transition, is a signature of that loss.
+
+Concretely, we contrast two hypotheses.
+\textbf{(H1)} The interpolation manifold loses normal hyperbolicity at the
+transition: a normal restoring direction softens toward zero, the
+timescale separation between fast and slow motion breaks down, and the
+trajectory makes a fast jump -- a fold or pitchfork in the fast--slow
+decomposition. Modular addition's symmetry group makes a symmetry-breaking
+pitchfork a natural candidate normal form.
+\textbf{(H0)} The manifold stays uniformly normally hyperbolic; the transition
+is a feature of the slow drift through a region where test behavior changes
+quickly, without any degeneration of the manifold's geometry. This is the
+picture implied by the contraction-based accounts above.
+
+H1 is the more interesting hypothesis and, if true, would tie the dynamical
+and mechanistic-interpretability views of grokking together. The contribution
+of this short paper is a clean test that distinguishes H1 from H0 and a
+preliminary -- and, as it turns out, negative -- result.
+
+\section{The diagnostic}
+Let $f(\theta;x)\in\R^{c}$ denote the network output and consider the squared
+loss $L(\theta)=\frac1n\sum_{i=1}^{n}\lVert f(\theta;x_i)-y_i\rVert^2$ on a
+training set of size $n$. We use squared loss precisely because it makes the
+\emph{interpolation manifold} $\mathcal{M}=\{\theta : f(\theta;x_i)=y_i\ \forall i\}$
+an exact object with a well-defined tangent and normal structure, which the
+diagnostic needs. Training with decoupled weight decay $\lambda$ follows, in
+the gradient-flow limit, $\dot\theta=-\nabla L(\theta)-\lambda\theta$; for
+small $\lambda$ the term $-\nabla L$ is fast and pulls toward $\mathcal{M}$,
+while $-\lambda\theta$ is the slow drift along it.
+
+Collect the residuals into $r(\theta)=\big(f(\theta;x_i)-y_i\big)_i\in\R^{nc}$
+and let $J(\theta)=\partial r/\partial\theta\in\R^{nc\times D}$ be the residual
+Jacobian. The Gauss--Newton Hessian is $G(\theta)=J(\theta)^\top J(\theta)$. At
+a point of $\mathcal{M}$, the row space of $J$ is the normal space
+$N_\theta\mathcal{M}$ (directions in which residuals -- hence the loss --
+change to first order), and $\ker J$ is the tangent space $T_\theta\mathcal{M}$
+(directions along which the model stays interpolating). The nonzero
+eigenvalues of $G$ are the squared singular values $\sigma_i(J)^2$, so the
+\emph{smallest normal restoring curvature} of the manifold is
+\begin{equation}
+  \kappa(\theta) \;=\; \sminp\!\big(J(\theta)\big)^2 ,
+\end{equation}
+where $\sminp$ denotes the smallest nonzero singular value. In an
+over-parameterized network with $nc<D$, $J$ is generically of full row rank, so
+all $nc$ singular values are positive and $\sminp$ is simply the smallest of
+them.
+
+Normal hyperbolicity of $\mathcal{M}$ for the fast subsystem is the statement
+that $\kappa(\theta)$ is bounded away from zero, uniformly along the slow
+drift; this is the condition under which Fenichel theory guarantees that the
+true (perturbed) slow manifold persists and the reduced flow is the norm flow
+studied by~\cite{musat2025,boursier2025}. A loss of normal hyperbolicity --
+the prerequisite for the fold/pitchfork mechanism of H1 -- is exactly
+$\sminp(J)\to 0$. The diagnostic is therefore the single scalar trajectory
+$\sminp(J(\theta(t)))$, read against the test-accuracy curve. A dip toward zero
+at the transition supports H1; a value bounded away from zero supports H0. The
+quantity is a property of the model and data at $\theta$, so it is well-defined
+for any optimizer, not only the gradient flow for which the slow-drift theory
+is cleanest.
+
+\section{Experimental setup}
+We train a two-layer ReLU network $f(\theta;x)=W_2\,\mathrm{ReLU}(W_1 x + b_1)$
+with width $96$ and no second-layer bias on modular addition mod $p=11$: the
+input is the concatenation of the one-hot encodings of $a$ and $b$, and the
+target is the one-hot encoding of $(a+b)\bmod p$. We use a random
+$70\%/30\%$ train/test split (seed fixed), squared loss to the one-hot targets,
+full-batch optimization, and a large initialization (Kaiming scaled by $3.5$)
+to induce a clear memorization plateau. To reach the transition within a
+practical compute budget we optimize with AdamW (learning rate $3\times10^{-3}$,
+decoupled weight decay $2.0$) for $35{,}000$ steps. We snapshot $\theta$ every
+$300$ steps and compute $\sminp(J)$ on the snapshots in a separate pass, so the
+cost of the singular value decomposition does not slow training. We return to
+the choice of Adam, rather than the gradient descent of the underlying theory,
+in the discussion.
+
+\section{Results}
+The run groks (Figure~\ref{fig:main}): training accuracy reaches $1.0$ by about
+step $4{,}000$, test accuracy stays at $0.0$ through about step $6{,}000$, and
+then rises over roughly $7{,}000$--$17{,}000$ steps to $\approx 0.95$.
+
+The diagnostic does not behave as H1 predicts. $\sminp(J)$ is near zero only
+\emph{before} memorization (its global minimum, $\approx 7\times10^{-3}$, occurs
+at step $1{,}200$, while training accuracy is still well below $1$ and the
+network has not yet differentiated its outputs). It then rises monotonically as
+the interpolation manifold forms, and across the entire generalization
+transition it sits at its largest values; if anything, the normal restoring
+curvature \emph{peaks} mid-transition rather than collapsing.
+Table~\ref{tab:phases} summarizes the medians by phase.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\linewidth]{grokking_normal_hyperbolicity.png}
+  \caption{Test and training accuracy (left axis) and the normal restoring
+  curvature $\sminp(J)$ (right axis) over training. The shaded band marks the
+  generalization transition. $\sminp(J)$ does not dip during the transition;
+  it is small only before memorization and is largest while the model
+  generalizes. Two-layer ReLU network, squared loss, AdamW, modular addition
+  $p=11$; single seed.}
+  \label{fig:main}
+\end{figure}
+
+\begin{table}[t]
+  \centering
+  \begin{tabular}{lccc}
+    \toprule
+    Phase & Step range & median $\sminp(J)$ & min $\sminp(J)$\\
+    \midrule
+    Pre-memorization & $600$--$1800$ & $\approx 0.013$ & $0.0072$\\
+    Memorization plateau & $3000$--$6000$ & $0.13$ & $0.045$\\
+    Generalization transition & $7000$--$17000$ & $0.22$ & $0.205$\\
+    Post-transition & $\ge 22000$ & $0.18$ & $\approx 0.18$\\
+    \bottomrule
+  \end{tabular}
+  \caption{Normal restoring curvature by training phase. The only regime in
+  which $\sminp(J)$ approaches zero is pre-memorization, which is unrelated to
+  grokking; during the transition it is at its maximum. The pre-memorization
+  reading also shows the diagnostic is sensitive enough to register a genuinely
+  near-degenerate Jacobian when one occurs.}
+  \label{tab:phases}
+\end{table}
+
+A secondary observation: the parameter norm does not decrease through the
+transition in this run (it stays near $10$ and drifts slightly upward). The
+generalization event is therefore not accompanied by visible $\ell_2$-norm
+contraction here. This is consistent with the implicit bias of AdamW being
+governed by an $\ell_\infty$-type rather than $\ell_2$ geometry~\cite{xie2024,
+gronich2026}, and we treat it as a caveat about the optimizer rather than a
+claim about the manifold.
+
+\section{Discussion and limitations}
+Taken at face value, the experiment favors H0 over H1: the interpolation
+manifold remains robustly normally hyperbolic across grokking, and the
+suddenness of the transition is not mirrored by any softening of a normal
+restoring direction. This is the outcome one expects from the smooth
+contraction picture of~\cite{musat2025,boursier2025,lyu2024} and from recent
+work framing the grokking delay as exponential norm contraction across a
+geometric gap.\footnote{A 2026 preprint derives a norm-separation delay law for
+discrete regularized SGD; see the bibliography entry marked \%VERIFY. We cite
+it for context and have not independently reproduced it.} Because the
+entry--exit delay law of a delayed-loss-of-stability mechanism only applies if
+a bifurcation exists, the negative result also removes the motivation for that
+particular theoretical route.
+
+We are deliberate about what this does \emph{not} establish. The evidence is
+preliminary and bounded in at least five ways. First, it is a single seed and
+a single architecture and hyperparameter setting at small $p$; the curve should
+be repeated across seeds and moduli. Second, we optimize with AdamW, whereas
+the fast--slow theory is stated for gradient descent or gradient flow; the
+clean theory regime is untested here. Third, the observed transition is
+moderately gradual rather than maximally sharp, and the sharpest grokking
+regimes -- under gradient descent with large initialization and small weight
+decay -- are the most stringent place to look for a fold. Fourth, $\sminp(J)$
+is the \emph{global} smallest normal singular value; a loss of normal
+hyperbolicity confined to a low-dimensional, test-relevant subspace could in
+principle occur while the global minimum stays bounded away from zero, and a
+subspace-resolved version of the diagnostic would be needed to exclude it.
+Fifth, we measure a discrete trajectory, not the gradient-flow limit in which
+the manifold structure is exactly defined. For these reasons we frame the
+result as constraining, not refuting: in this regime, grokking is not
+accompanied by a global collapse of the manifold's normal restoring curvature.
+
+These limitations also define the experiments that would settle the question:
+the same diagnostic under gradient descent in a sharp-transition regime; a
+subspace-resolved curvature that projects onto the directions separating train
+from test points; and, if a dip never appears, a positive characterization of
+\emph{which} geometric quantity does move monotonically through the transition,
+which under AdamW may be an $\ell_\infty$- or sparsity-based measure rather than
+$\ell_2$ norm.
+
+\section{Conclusion}
+We asked whether the sharp transition in grokking is a loss of normal
+hyperbolicity of the interpolation manifold, and we gave a diagnostic --- the
+smallest nonzero singular value of the residual Jacobian --- that turns the
+question into a single measurable curve. On a network that groks modular
+addition under squared loss, the answer appears to be no: the manifold stays
+normally hyperbolic through the transition. We do not claim to have proved the
+absence of a bifurcation; we have shown that, in a clean grokking run with a
+sensitive instrument, no such signature is present, which is itself a
+constraint on theories of why the transition is sharp.
+
+\paragraph{Reproducibility.} Training and diagnostic code, and the data behind
+Figure~\ref{fig:main}, are available at [repository link].
+
+\begin{thebibliography}{99}\small
+\bibitem{power2022} A.~Power, Y.~Burda, H.~Edwards, I.~Babuschkin, V.~Misra.
+  Grokking: Generalization beyond overfitting on small algorithmic datasets.
+  arXiv:2201.02177, 2022.
+\bibitem{musat2025} T.~Mu\c{s}at. The Geometry of Grokking: Norm Minimization
+  on the Zero-Loss Manifold. arXiv:2511.01938, 2025.
+\bibitem{boursier2025} E.~Boursier et al. A Theoretical Framework for Grokking:
+  Interpolation followed by Riemannian Norm Minimisation. arXiv:2505.20172,
+  2025. %VERIFY id and author list
+\bibitem{lyu2024} K.~Lyu, J.~Jin, Z.~Li, S.~S.~Du, J.~D.~Lee, W.~Hu. Dichotomy
+  of Early and Late Phase Implicit Biases Can Provably Induce Grokking. ICLR
+  2024; arXiv:2311.18817.
+\bibitem{nanda2023} N.~Nanda, L.~Chan, T.~Lieberum, J.~Smith, J.~Steinhardt.
+  Progress measures for grokking via mechanistic interpretability. ICLR 2023;
+  arXiv:2301.05217.
+\bibitem{soudry2018} D.~Soudry, E.~Hoffer, M.~S.~Nacson, S.~Gunasekar,
+  N.~Srebro. The implicit bias of gradient descent on separable data. JMLR
+  19(1):2822--2878, 2018.
+\bibitem{lyuli2020} K.~Lyu, J.~Li. Gradient descent maximizes the margin of
+  homogeneous neural networks. ICLR 2020.
+\bibitem{xie2024} S.~Xie et al. Implicit bias of AdamW: $\ell_\infty$-norm
+  constrained optimization. ICML 2024; arXiv:2404.04454. %VERIFY
+\bibitem{gronich2026} A.~Gronich, G.~Vardi. The Implicit Bias of Adam and Muon
+  on Smooth Homogeneous Neural Networks. arXiv:2602.16340, 2026. %VERIFY
+\bibitem{fenichel1979} N.~Fenichel. Geometric singular perturbation theory for
+  ordinary differential equations. J.\ Differential Equations 31(1):53--98,
+  1979.
+\bibitem{kuehn2015} C.~Kuehn. Multiple Time Scale Dynamics. Springer, 2015.
+\bibitem{omnigrok} Z.~Liu, E.~J.~Michaud, M.~Tegmark. Omnigrok: Grokking beyond
+  algorithmic data. ICLR 2023. %VERIFY id
+\bibitem{delaylaw} The Norm-Separation Delay Law of Grokking.
+  arXiv:2603.13331, 2026. %VERIFY id and authors; post-dates our main analysis
+\end{thebibliography}
+
+\end{document}
