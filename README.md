@@ -1,127 +1,111 @@
 # Is Grokking a Loss of Normal Hyperbolicity of the Interpolation Manifold?
 
-Code and figure for the SKILL 2026 short paper that tests whether the sharp
-generalization transition in grokking coincides with a loss of normal
-hyperbolicity of the zero-loss (interpolation) manifold.
+Code, figures, and paper for the SKILL 2026 short paper testing whether the sharp
+generalization transition in grokking coincides with a **loss of normal hyperbolicity**
+of the zero-loss (interpolation) manifold — a fold/bifurcation — or is smooth drift along
+a manifold that stays uniformly attracting.
+
+![Main result](paper/figures/fig1_sigma_min.png)
+
+**Result (this setting):** the smallest nonzero singular value of the residual Jacobian,
+`sigma_min^+(J)` — which for squared loss equals the slowest normal restoring rate — does
+**not** collapse at the grokking transition. It is near zero only *before* memorization and
+largest *during* the transition. The finding holds across five seeds, and the six smallest
+singular values behave identically (no subspace-local collapse). This is preliminary evidence
+against the bifurcation hypothesis and for the smooth-contraction picture — stated as a
+constraint, not a proof, given the AdamW/single-setting scope (see the paper's limitations).
 
 ## About
 
-The post-memorization phase of grokking is often modelled as a fast--slow
-system: a fast process pulls the parameters onto the interpolation manifold,
-and a slow weight-decay-driven drift moves them along it. This repository asks
-whether the sudden transition is a *fold/bifurcation* of that slow manifold
-(its normal restoring curvature collapsing) or smooth drift across a
-persistently attracting manifold. It measures one scalar along training,
-`sigma_min^+(J)` — the smallest nonzero singular value of the residual Jacobian,
-which equals the smallest normal restoring curvature — on a two-layer ReLU
-network that groks modular addition under squared loss. In the regime studied,
-`sigma_min^+(J)` does not collapse at the transition; it is small only before
-memorization and largest while the model generalizes.
+The post-memorization phase of grokking is commonly modelled as a fast–slow system: a fast
+process pulls parameters onto the interpolation manifold, and a slow weight-decay drift moves
+them along it. This repository turns "is the transition a bifurcation of that slow manifold?"
+into one measurable curve: `sigma_min^+(J)`, the slowest normal restoring rate. Loss of normal
+hyperbolicity corresponds to `sigma_min^+(J) -> 0`.
 
-## Getting Started
+## Getting started
 
 ### Prerequisites
+- Python 3.10+, PyTorch 2.2+, Matplotlib (see `requirements.txt`). CPU is sufficient.
 
-- Python 3.10+
-- PyTorch 2.2+ and Matplotlib (see `requirements.txt`). CPU is sufficient; the
-  default run is small.
-
-### Installation
-
+### Install
 ```bash
-git clone https://github.com/your-username/grokking-normal-hyperbolicity.git
+git clone https://github.com/baksho/grokking-normal-hyperbolicity.git
 cd grokking-normal-hyperbolicity
 pip install -r requirements.txt
 ```
 
-### Reproduce the figure
-
+### Reproduce both figures
 ```bash
 bash run.sh
 ```
-
-This trains the default configuration, computes the diagnostic on the
-snapshots, and writes `paper/figures/grokking_normal_hyperbolicity.png`.
+This trains the default configuration, computes the diagnostic, runs the five-seed robustness
+sweep, and writes `paper/figures/fig1_sigma_min.png` and
+`paper/figures/fig2_spectrum_multiseed.png`.
 
 ## Usage
 
-The three stages can also be run separately:
-
+Run the stages separately:
 ```bash
-# 1. Train and snapshot parameters across training
-python src/train.py --seed 0 --out runs
-
-# 2. Compute sigma_min^+(J) on each snapshot -> results/results_seed0.csv
-python src/diagnostic.py --run runs/run_seed0.pt --out results
-
-# 3. Plot accuracy and sigma_min^+(J) vs. step
+python src/train.py --seed 0 --out runs                        # train + snapshot theta
+python src/diagnostic.py --run runs/run_seed0.pt --out results # sigma_1..6 per snapshot -> CSV
+python src/multiseed.py --seeds 0 1 2 3 4 --out results        # 5-seed robustness -> CSV
 python src/plot.py --results results/results_seed0.csv \
-    --fig paper/figures/grokking_normal_hyperbolicity.png
+    --multiseed results/multiseed.csv --figdir paper/figures
 ```
-
-### Multiple seeds
-
-The paper figure is single-seed; a robust claim needs several. Train a few
-seeds and overlay their curves:
-
-```bash
-for s in 0 1 2 3 4; do
-  python src/train.py --seed $s --out runs
-  python src/diagnostic.py --run runs/run_seed$s.pt --out results
-done
-python src/plot.py --results "results/results_seed*.csv" --fig multi_seed.png
-```
-
-If `sigma_min^+(J)` stays bounded away from zero across all seeds, the negative
-result holds; if any seed dips at its transition, that is a different and more
-interesting finding.
 
 ### Key arguments (`src/train.py`)
-
 | Flag | Default | Meaning |
 | --- | --- | --- |
 | `--p` | 11 | modulus for addition mod p |
 | `--width` | 96 | hidden width |
 | `--train_frac` | 0.7 | fraction of the p^2 pairs used for training |
-| `--init_scale` | 3.5 | multiplier on Kaiming init (large init lengthens the plateau) |
+| `--init_scale` | 3.5 | Kaiming init multiplier (large init lengthens the plateau) |
 | `--weight_decay` | 2.0 | AdamW decoupled weight decay |
 | `--lr` | 3e-3 | AdamW learning rate |
 | `--steps` | 35000 | training steps |
-| `--snapshot_every` | 600 | snapshot interval (also the diagnostic resolution) |
+| `--snapshot_every` | 500 | snapshot interval (diagnostic resolution) |
 
-## Project Structure
-
+## Project structure
 ```
 .
 ├── run.sh                 # end-to-end reproduction
 ├── requirements.txt
 ├── src/
 │   ├── train.py           # train + snapshot theta
-│   ├── diagnostic.py      # sigma_min^+(J) per snapshot -> CSV
-│   └── plot.py            # accuracy + sigma_min^+(J) figure
+│   ├── diagnostic.py      # k smallest singular values of J per snapshot
+│   ├── multiseed.py       # multi-seed sigma_min^+(J) sweep
+│   └── plot.py            # Figure 1 and Figure 2 (spectrum + multi-seed)
 └── paper/
-    ├── grokking_normal_hyperbolicity_skill2026.tex
-    └── figures/grokking_normal_hyperbolicity.png
+    ├── grokking_normal_hyperbolicity_skill2026_camera.tex
+    └── figures/
+        ├── fig1_sigma_min.png
+        └── fig2_spectrum_multiseed.png
 ```
 
-## Results
+## Figures
+- **Figure 1** — accuracy and `sigma_min^+(J)` over training: no dip at the transition.
+- **Figure 2** — (a) the six smallest singular values stay bounded away from zero; (b) the
+  no-dip result holds across five seeds (per-seed lines, mean ± s.d.).
 
-On the default run the network memorizes by ~step 4k (train accuracy 1.0, test
-accuracy 0.0 through ~6k), then test accuracy climbs to ~0.95 over steps
-~7k–17k. Across that transition `sigma_min^+(J)` sits at its maximum
-(~0.20–0.23); it is near zero (~0.007) only before memorization. The
-interpolation manifold therefore stays normally hyperbolic through grokking in
-this regime — evidence against the bifurcation hypothesis, though single-seed
-and under AdamW rather than the gradient descent of the underlying theory. See
-the paper's limitations section for the bounds on this claim.
+## Diagnostic in one line
+
+At interpolation the Gauss–Newton matrix `J^T J` governs the normal (fast) dynamics: its nonzero
+eigenvalues are `sigma_i(J)^2`, and the smallest, `sigma_min^+(J)^2`, is the slowest normal
+restoring rate. Normal hyperbolicity ⇔ this rate is bounded away from zero along the drift; a
+bifurcation would require `sigma_min^+(J) -> 0`.
 
 ## Paper
 
-The LaTeX source is in `paper/`. It compiles as-is with `pdflatex` (article
-class) for preview; for submission, port the body into the official GI-LNI
-template. Verify all bibliography entries before submitting, in particular the
-2026 preprints.
+`paper/grokking_normal_hyperbolicity_skill2026_camera.tex` compiles as-is with `pdflatex`
+(article class) for preview; for submission, port the body into the GI-LNI template. Verify all
+bibliography entries, especially the 2026 preprints.
+
+## Keywords
+
+grokking · normal hyperbolicity · interpolation manifold · fast–slow dynamics · implicit bias ·
+weight decay · Gauss–Newton Jacobian · double descent · delayed generalization
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). Fill in the year before publishing.

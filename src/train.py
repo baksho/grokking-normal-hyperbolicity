@@ -1,10 +1,9 @@
 """Train a two-layer ReLU network to grok modular addition (squared loss) and
-snapshot the parameters across training.
+snapshot parameters across training. Snapshots let the normal-hyperbolicity
+diagnostic (diagnostic.py) run in a separate pass without slowing training.
 
-The defaults reproduce the run behind the paper figure: a clear memorization
-plateau followed by a delayed generalization transition. Snapshots are saved so
-that the normal-hyperbolicity diagnostic (diagnostic.py) can be computed in a
-separate pass without slowing training.
+Defaults reproduce the paper run: a clear memorization plateau followed by a
+delayed generalization transition.
 """
 import argparse, os, torch, torch.nn as nn
 
@@ -48,8 +47,8 @@ def main():
     ap.add_argument("--steps", type=int, default=35000)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--split_seed", type=int, default=1)
-    ap.add_argument("--log_every", type=int, default=200)
-    ap.add_argument("--snapshot_every", type=int, default=600)
+    ap.add_argument("--log_every", type=int, default=250)
+    ap.add_argument("--snapshot_every", type=int, default=500)
     ap.add_argument("--out", type=str, default="runs")
     args = ap.parse_args()
 
@@ -82,7 +81,7 @@ def main():
     torch.save({"log": log, "snaps": snaps, "snap_steps": snap_steps,
                 "Xtr": Xtr, "Ytr": Ytr, "Ytr_c": Ytr_c, "Xte": Xte, "Yte_c": Yte_c,
                 "cfg": vars(args)}, path)
-    print(f"saved {path}  (final: {log[-1]})  n_snapshots={len(snaps)}")
+    print(f"saved {path}  final={log[-1]}  n_snapshots={len(snaps)}")
 
 
 if __name__ == "__main__":
