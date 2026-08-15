@@ -5,7 +5,7 @@ generalization transition in grokking coincides with a **loss of normal hyperbol
 of the zero-loss (interpolation) manifold — a fold/bifurcation — or is smooth drift along
 a manifold that stays uniformly attracting.
 
-![Main result](paper/figures/fig1_sigma_min.png)
+![Main result](figures/fig1_sigma_min.png)
 
 **Result (this setting):** the smallest nonzero singular value of the residual Jacobian,
 `sigma_min^+(J)` — which for squared loss equals the slowest normal restoring rate — does
@@ -108,4 +108,4 @@ weight decay · Gauss–Newton Jacobian · double descent · delayed generalizat
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Fill in the year before publishing.
+MIT — see [LICENSE](LICENSE).
