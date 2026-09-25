@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What is grokking? — SKILL 2026</title>
+<style>
+  :root{
+    --navy:#21294E; --red:#C8102E; --blue:#2A62A8; --grey:#5B6078; --muted:#8A8FA3;
+    --ink:#1F2333; --bg:#FFFFFF; --panel:#F2F4F8; --tint:#E8EDF7; --pink:#FBE7EA; --rule:#B8BCCB;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --navy:#C7D2F2; --red:#FF8A9A; --blue:#7FB0EE; --grey:#A8AEC4; --muted:#8A8FA3;
+      --ink:#ECEFF7; --bg:#161A2B; --panel:#1F2440; --tint:#232A4A; --pink:#3A2230; --rule:#3A4166;
+    }
+  }
+  :root[data-theme="dark"]{
+    --navy:#C7D2F2; --red:#FF8A9A; --blue:#7FB0EE; --grey:#A8AEC4; --muted:#8A8FA3;
+    --ink:#ECEFF7; --bg:#161A2B; --panel:#1F2440; --tint:#232A4A; --pink:#3A2230; --rule:#3A4166;
+  }
+  *,*::before,*::after{box-sizing:inherit}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:Calibri,Carlito,"Segoe UI",system-ui,-apple-system,Arial,sans-serif;
+    font-size:17px;line-height:1.45}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 18px 28px}
+  header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+  h1{font-size:clamp(20px,2.4vw,28px);margin:0;color:var(--navy)}
+  .sub{color:var(--grey);font-size:14px}
+  .chart{background:var(--bg);border:1px solid var(--rule);border-radius:10px;padding:6px 8px 2px}
+  svg{width:100%;height:auto;display:block;overflow:visible}
+  .controls{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin:14px 0 6px}
+  button{font:inherit;font-size:15px;padding:7px 14px;border-radius:999px;border:1px solid var(--rule);
+    background:var(--bg);color:var(--navy);cursor:pointer}
+  button:hover{border-color:var(--navy)}
+  button.primary{background:var(--navy);color:var(--bg);border-color:var(--navy);min-width:112px}
+  button.on{background:var(--navy);color:var(--bg);border-color:var(--navy)}
+  .sliderRow{display:flex;align-items:center;gap:12px;margin:12px 0 4px}
+  input[type=range]{flex:1;accent-color:var(--blue);height:26px}
+  .readout{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:6px;font-variant-numeric:tabular-nums}
+  .readout div{font-size:15px;color:var(--grey)}
+  .readout b{color:var(--ink);font-weight:700}
+  .panel{margin-top:14px;background:var(--panel);border-radius:10px;padding:14px 16px}
+  .panel.phase{background:var(--pink)}
+  .panel h2{margin:0 0 6px;font-size:18px;color:var(--navy)}
+  .panel.phase h2{color:var(--red)}
+  .panel p{margin:0;font-size:16px}
+  .jump{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  footer{margin-top:18px;color:var(--muted);font-size:12.5px}
+  kbd{border:1px solid var(--rule);border-radius:4px;padding:0 5px;font-size:12px}
+  @media (max-width:640px){ body{font-size:16px} .controls{gap:8px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>What is grokking?</h1>
+    <div class="sub">Two-layer ReLU network learning (a + b) mod 11 · curves traced from Fig. 1 of the paper (seed 0)</div>
+  </header>
+
+  <div class="chart">
+    <svg id="plot" viewBox="0 0 900 430" role="img" aria-label="Training and test accuracy against training step"></svg>
+  </div>
+
+  <div class="sliderRow">
+    <span class="sub" style="min-width:86px">training step</span>
+    <input id="slider" type="range" min="0" max="35000" step="250" value="0" aria-label="training step">
+    <strong id="stepOut" style="min-width:74px;text-align:right;font-variant-numeric:tabular-nums">0</strong>
+  </div>
+
+  <div class="controls">
+    <button id="play" class="primary">▶ Play</button>
+    <button id="reset">Reset</button>
+    <button id="end">Show all</button>
+    <button id="sigToggle">Show σ⁺min(J)</button>
+    <button id="theme" style="margin-left:auto">Light / dark</button>
+  </div>
+
+  <div class="readout">
+    <div>train accuracy <b id="trOut">–</b></div>
+    <div>test accuracy <b id="teOut">–</b></div>
+    <div id="sgWrap" style="display:none">σ⁺min(J) <b id="sgOut">–</b></div>
+    <div>chance level <b>0.09</b></div>
+  </div>
+
+  <div class="panel phase" id="phasePanel">
+    <h2 id="phaseTitle">Start</h2>
+    <p id="phaseText">Drag the slider (or press Play) to run training forward.</p>
+  </div>
+
+  <div class="jump">
+    <button data-go="2000">1 Memorization</button>
+    <button data-go="5500">2 Plateau</button>
+    <button data-go="12000">3 Transition</button>
+    <button data-go="30000">4 After</button>
+  </div>
+
+  <footer>
+    <kbd>←</kbd> <kbd>→</kbd> step · <kbd>space</kbd> play/pause · <kbd>s</kbd> toggle σ⁺min(J).
+    Accuracy and σ⁺min(J) curves were traced from the published figure, so values are approximate to about ±0.01;
+    the numbers quoted in the paper are the authoritative ones.
+  </footer>
+</div>
+
+<script>
+const STEPS_MAX=35000,DSTEP=250;
+const TR=[0.1,0.168,0.213,0.275,0.345,0.457,0.555,0.647,0.72,0.772,0.822,0.876,0.928,0.963,0.985,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1];
+const TE=[0.15,0.08,0.015,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.002,0.011,0.033,0.068,0.109,0.149,0.18,0.185,0.183,0.171,0.174,0.22,0.266,0.298,0.318,0.322,0.324,0.336,0.359,0.39,0.434,0.486,0.527,0.524,0.524,0.567,0.615,0.648,0.669,0.673,0.673,0.673,0.673,0.673,0.687,0.731,0.774,0.826,0.859,0.877,0.883,0.859,0.846,0.881,0.91,0.901,0.891,0.889,0.889,0.889,0.889,0.889,0.895,0.918,0.938,0.943,0.945,0.958,0.968,0.956,0.945,0.943,0.943,0.943,0.943,0.943,0.945,0.958,0.969,0.971,0.971,0.971,0.971,0.971,0.964,0.944,0.921,0.915,0.915,0.915,0.918,0.93,0.941,0.929,0.918,0.915,0.915,0.915,0.915,0.915,0.906,0.873,0.839,0.82,0.81,0.808,0.81,0.823,0.833,0.835,0.835,0.835,0.835,0.835,0.837,0.849,0.86,0.862,0.862,0.862,0.862,0.862,0.862,0.862,0.862,0.862,0.862];
+const SG=[null,null,0.1507,0.0366,0.0142,0.0098,0.0107,0.0165,0.0219,0.0266,0.0316,0.038,0.0464,0.0579,0.0696,0.0845,0.0993,0.112,0.1242,0.1369,0.1488,0.1584,0.1672,0.1764,0.1858,0.195,0.2026,0.2019,0.2007,0.2051,0.2103,0.2168,0.2224,0.2218,0.2205,0.2197,0.2189,0.2201,0.2201,0.2163,0.212,0.2071,0.203,0.2021,0.2019,0.208,0.2138,0.2174,0.2201,0.2222,0.2232,0.2191,0.2149,0.213,0.2109,0.2117,0.212,0.2128,0.2122,0.2065,0.2011,0.198,0.1956,0.195,0.1944,0.1965,0.1979,0.1994,0.2002,0.2003,0.2002,0.199,0.1975,0.1967,0.1959,0.194,0.1921,0.1921,0.1917,0.1919,0.1913,0.1925,0.1927,0.1887,0.1846,0.1833,0.1817,0.1839,0.1848,0.186,0.1863,0.1865,0.1863,0.1852,0.184,0.1837,0.1829,0.1837,0.184,0.1831,0.1817,0.1831,0.184,0.1831,0.1817,0.1819,0.1817,0.1798,0.1775,0.1766,0.1752,0.175,0.1745,0.176,0.1771,0.1762,0.1748,0.1756,0.176,0.1752,0.1741,0.1737,0.1729,0.1733,0.1729,0.1718,0.1702,0.1714,0.1722,0.1733,0.1741,0.1747,0.1748,0.1731,0.1714,0.1722,0.1729,0.1733,0.1733,0.1739,0.125];
+
+const PHASES=[
+ {from:0,to:4000,key:"mem",title:"1 · Memorization",
+  text:"Training accuracy climbs from chance to 1.0 within about 4,000 steps: the network fits every training pair. Test accuracy falls to 0.0 — it is learning the training set, not the rule."},
+ {from:4000,to:7000,key:"plateau",title:"2 · Plateau",
+  text:"Training accuracy 1.0, test accuracy 0.0 — below the 1/11 ≈ 0.09 chance level: the memorizing solution actively mispredicts unseen pairs. From the accuracy curves, nothing seems to be happening."},
+ {from:7000,to:17000,key:"trans",title:"3 · Transition",
+  text:"Test accuracy rises to ≈ 0.95 over roughly steps 7,000–17,000 — with training accuracy unchanged at 1.0. What happens geometrically in this window is the question of the talk."},
+ {from:17000,to:35001,key:"post",title:"4 · After the transition",
+  text:"Test accuracy settles near 0.86. Training accuracy never moved; nothing in the loss signalled the change in advance."}
+];
+
+const W=900,H=430,L=64,R=58,T=26,B=46;
+const px=s=>L+(W-L-R)*s/STEPS_MAX;
+const py=v=>H-B-(H-B-T)*v;              // accuracy axis 0..1
+const pys=v=>H-B-(H-B-T)*(v/0.25);      // sigma axis 0..0.25
+const svg=document.getElementById("plot");
+const NS="http://www.w3.org/2000/svg";
+const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+let cur=0, playing=false, showSig=false, timer=null;
+
+function path(arr,mapY,upto){
+  let d="",started=false;
+  for(let i=0;i<arr.length;i++){
+    const s=i*DSTEP; if(s>upto) break;
+    const v=arr[i]; if(v===null||v===undefined) continue;
+    d+= (started?"L":"M")+px(s).toFixed(1)+" "+mapY(v).toFixed(1)+" "; started=true;
+  }
+  return d;
+}
+function idxOf(step){return Math.round(step/DSTEP);}
+
+function draw(){
+  const ink=css("--ink"),grey=css("--grey"),rule=css("--rule"),blue=css("--blue"),red=css("--red"),
+        muted=css("--muted"),pink=css("--pink"),panel=css("--panel");
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+
+  // phase band for the phase the slider is in
+  const ph=PHASES.find(p=>cur>=p.from&&cur<p.to);
+  if(ph&&cur>0){
+    svg.appendChild(el("rect",{x:px(ph.from),y:T,width:px(Math.min(ph.to,STEPS_MAX))-px(ph.from),
+      height:H-B-T,fill:pink,opacity:0.85}));
+  }
+  // grid + y ticks (accuracy)
+  [0,0.25,0.5,0.75,1].forEach(v=>{
+    svg.appendChild(el("line",{x1:L,x2:W-R,y1:py(v),y2:py(v),stroke:rule,"stroke-width":0.6,opacity:0.55}));
+    const tx=el("text",{x:L-10,y:py(v)+5,"text-anchor":"end",fill:grey,"font-size":13});
+    tx.textContent=v.toFixed(2); svg.appendChild(tx);
+  });
+  // chance level
+  svg.appendChild(el("line",{x1:L,x2:W-R,y1:py(1/11),y2:py(1/11),stroke:muted,"stroke-width":1.2,"stroke-dasharray":"3 4"}));
+  const ch=el("text",{x:W-R-4,y:py(1/11)-6,"text-anchor":"end",fill:muted,"font-size":12});
+  ch.textContent="chance 1/11"; svg.appendChild(ch);
+  // x ticks
+  for(let s=0;s<=STEPS_MAX;s+=5000){
+    svg.appendChild(el("line",{x1:px(s),x2:px(s),y1:H-B,y2:H-B+5,stroke:rule,"stroke-width":1}));
+    const tx=el("text",{x:px(s),y:H-B+22,"text-anchor":"middle",fill:grey,"font-size":13});
+    tx.textContent=s.toLocaleString("en-US"); svg.appendChild(tx);
+  }
+  svg.appendChild(el("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,stroke:rule,"stroke-width":1.2}));
+  svg.appendChild(el("line",{x1:L,x2:L,y1:T,y2:H-B,stroke:rule,"stroke-width":1.2}));
+  const xl=el("text",{x:(L+W-R)/2,y:H-6,"text-anchor":"middle",fill:grey,"font-size":13});
+  xl.textContent="training step"; svg.appendChild(xl);
+  const yl=el("text",{x:16,y:(T+H-B)/2,"text-anchor":"middle",fill:grey,"font-size":13,
+    transform:`rotate(-90 16 ${(T+H-B)/2})`});
+  yl.textContent="accuracy"; svg.appendChild(yl);
+
+  if(showSig){
+    svg.appendChild(el("line",{x1:W-R,x2:W-R,y1:T,y2:H-B,stroke:red,"stroke-width":1.2,opacity:0.7}));
+    [0,0.05,0.10,0.15,0.20,0.25].forEach(v=>{
+      const tx=el("text",{x:W-R+8,y:pys(v)+5,fill:red,"font-size":12});
+      tx.textContent=v.toFixed(2); svg.appendChild(tx);
+    });
+    const sl=el("text",{x:W-14,y:(T+H-B)/2,"text-anchor":"middle",fill:red,"font-size":13,
+      transform:`rotate(-90 ${W-14} ${(T+H-B)/2})`});
+    sl.textContent="σ⁺min(J)"; sl.setAttribute("font-style","italic"); svg.appendChild(sl);
+    svg.appendChild(el("path",{d:path(SG,pys,cur),fill:"none",stroke:red,"stroke-width":2.6,
+      "stroke-linejoin":"round"}));
+  }
+  svg.appendChild(el("path",{d:path(TR,py,cur),fill:"none",stroke:grey,"stroke-width":2.4,
+    "stroke-dasharray":"7 5","stroke-linejoin":"round"}));
+  svg.appendChild(el("path",{d:path(TE,py,cur),fill:"none",stroke:blue,"stroke-width":3,
+    "stroke-linejoin":"round"}));
+
+  // current markers
+  if(cur>0){
+    const i=idxOf(cur);
+    svg.appendChild(el("line",{x1:px(cur),x2:px(cur),y1:T,y2:H-B,stroke:ink,"stroke-width":1,opacity:0.35}));
+    svg.appendChild(el("circle",{cx:px(cur),cy:py(TE[i]),r:5,fill:blue}));
+    if(TR[i]!==null) svg.appendChild(el("circle",{cx:px(cur),cy:py(TR[i]),r:4.5,fill:grey}));
+    if(showSig) svg.appendChild(el("circle",{cx:px(cur),cy:pys(SG[i]),r:4.5,fill:red}));
+  }
+  // legend
+  const items=[["train accuracy",grey,true],["test accuracy",blue,false]];
+  if(showSig) items.push(["σ⁺min(J)",red,false]);
+  let lx=L+14;
+  items.forEach(([label,color,dash])=>{
+    svg.appendChild(el("line",{x1:lx,x2:lx+26,y1:T+10,y2:T+10,stroke:color,"stroke-width":3,
+      "stroke-dasharray":dash?"7 5":"0"}));
+    const tx=el("text",{x:lx+32,y:T+15,fill:css("--ink"),"font-size":13});
+    tx.textContent=label; svg.appendChild(tx);
+    lx+=42+label.length*7.2;
+  });
+}
+
+function fmt(v){return v===null||v===undefined?"–":v.toFixed(v<0.1?3:2);}
+function update(){
+  const i=idxOf(cur);
+  document.getElementById("stepOut").textContent=cur.toLocaleString("en-US");
+  document.getElementById("trOut").textContent=cur===0?"–":fmt(TR[i]);
+  document.getElementById("teOut").textContent=cur===0?"–":fmt(TE[i]);
+  document.getElementById("sgOut").textContent=cur===0?"–":SG[i].toFixed(3);
+  const ph=PHASES.find(p=>cur>=p.from&&cur<p.to);
+  const pt=document.getElementById("phaseTitle"),px_=document.getElementById("phaseText"),
+        pp=document.getElementById("phasePanel");
+  if(cur===0){
+    pt.textContent="Start"; px_.textContent="Drag the slider (or press Play) to run training forward.";
+    pp.classList.remove("phase");
+  }else{
+    pt.textContent=ph.title; px_.textContent=ph.text; pp.classList.add("phase");
+  }
+  draw();
+}
+function setStep(v){cur=Math.max(0,Math.min(STEPS_MAX,v));document.getElementById("slider").value=cur;update();}
+
+document.getElementById("slider").addEventListener("input",e=>{stop();setStep(+e.target.value);});
+document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>{stop();setStep(+b.dataset.go);}));
+document.getElementById("reset").addEventListener("click",()=>{stop();setStep(0);});
+document.getElementById("end").addEventListener("click",()=>{stop();setStep(STEPS_MAX);});
+document.getElementById("sigToggle").addEventListener("click",()=>{
+  showSig=!showSig;
+  document.getElementById("sigToggle").classList.toggle("on",showSig);
+  document.getElementById("sigToggle").textContent=(showSig?"Hide":"Show")+" σ⁺min(J)";
+  document.getElementById("sgWrap").style.display=showSig?"block":"none";
+  update();
+});
+const playBtn=document.getElementById("play");
+function stop(){playing=false;clearInterval(timer);playBtn.textContent="▶ Play";}
+function play(){
+  if(cur>=STEPS_MAX) setStep(0);
+  playing=true;playBtn.textContent="❚❚ Pause";
+  timer=setInterval(()=>{ if(cur>=STEPS_MAX){stop();return;} setStep(cur+DSTEP); },45);
+}
+playBtn.addEventListener("click",()=>{playing?stop():play();});
+document.getElementById("theme").addEventListener("click",()=>{
+  const cur_=document.documentElement.getAttribute("data-theme");
+  const dark=cur_?cur_==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.setAttribute("data-theme",dark?"light":"dark");
+  update();
+});
+addEventListener("keydown",e=>{
+  if(e.key==="ArrowRight"){stop();setStep(cur+DSTEP);e.preventDefault();}
+  else if(e.key==="ArrowLeft"){stop();setStep(cur-DSTEP);e.preventDefault();}
+  else if(e.key===" "){playing?stop():play();e.preventDefault();}
+  else if(e.key==="s"||e.key==="S"){document.getElementById("sigToggle").click();}
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",update);
+update();
+</script>
+</body>
+</html>
